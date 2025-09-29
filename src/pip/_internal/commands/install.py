@@ -1,5 +1,6 @@
 import errno
 import json
+import hashlib
 import operator
 import os
 import shutil
@@ -332,9 +333,14 @@ class InstallCommand(RequirementCommand):
         )
         build_tracker = self.enter_context(get_build_tracker())
 
+        def json_hash(values, length=8):
+            items = tuple(options.__dict__.items())
+            return hashlib.sha256(json.dumps(items).encode("utf-8")).hexdigest()[:length]
+
         directory = TempDirectory(
             delete=not options.no_clean,
             kind="install",
+            unique_part=json_hash(options),
             globally_managed=True,
         )
 

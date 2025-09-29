@@ -105,6 +105,7 @@ class TempDirectory:
         path: Optional[str] = None,
         delete: Union[bool, None, _Default] = _default,
         kind: str = "temp",
+        unique_part: str = None,
         globally_managed: bool = False,
     ):
         super().__init__()
@@ -122,12 +123,13 @@ class TempDirectory:
         # The only time we specify path is in for editables where it
         # is the value of the --src option.
         if path is None:
-            path = self._create(kind)
+            path = self._create(kind, unique_part)
 
         self._path = path
         self._deleted = False
         self.delete = delete
         self.kind = kind
+        self.unique_part = unique_part
 
         if globally_managed:
             assert _tempdir_manager is not None
@@ -155,13 +157,18 @@ class TempDirectory:
         if delete:
             self.cleanup()
 
-    def _create(self, kind: str) -> str:
+    def _create(self, kind: str, unique_part: str = None) -> str:
         """Create a temporary directory and store its path in self.path"""
         # We realpath here because some systems have their default tmpdir
         # symlinked to another directory.  This tends to confuse build
         # scripts, so we canonicalize the path by traversing potential
         # symlinks here.
-        path = os.path.realpath(tempfile.mkdtemp(prefix=f"pip-{kind}-"))
+        if unique_part:
+            path = os.path.join(tempfile.gettempdir(), f"pip-{kind}-{unique_part}")
+            os.mkdir(path, 0o700)
+        else:
+            path = tempfile.mkdtemp(prefix=f"pip-{kind}-")
+        path = os.path.realpath(path)
         logger.debug("Created temporary directory: %s", path)
         return path
 
